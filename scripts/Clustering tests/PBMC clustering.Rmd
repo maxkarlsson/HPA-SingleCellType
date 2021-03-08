@@ -1,0 +1,288 @@
+---
+title: "Untitled"
+author: "Max J. Karlsson"
+date: "2020 M02 26"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, echo = FALSE, message = FALSE, warning = FALSE}
+
+library(tidyverse)
+library(magrittr)
+library(umap)
+library(pcaMethods)
+library(pheatmap)
+library(MOFA)
+library(MultiAssayExperiment)
+library(MOFAdata)
+
+blood_cell_category <- 
+  read_delim("data/bloodcells_hpa_category_92.tsv", delim = "\t")
+
+
+
+data_barcodes <- read_delim("data/sc/PBMC/GSM3087619_DTM-X_PBMC_live_barcodes.tsv", delim = "\t", 
+                            col_names = "barcode")
+data_ensg_id <- read_delim("data/sc/PBMC/GSM3087619_DTM-X_PBMC_live_genes.tsv", delim = "\t", 
+                           col_names = c("ensg_id", "gene_name"))
+
+pbmc_data <- Matrix::readMM("data/sc/PBMC/GSM3087619_DTM-X_PBMC_live_matrix.mtx")
+
+enriched_genes <- 
+  blood_cell_category %>% 
+  # filter(specificity_category %in% c("Tissue enriched")) %>% 
+  filter(specificity_category %in% c("Tissue enriched", "Group enriched", "Tissue enhanced")) %>%
+  filter(ensg_id %in% data_ensg_id$ensg_id)
+
+enriched_genes %>% 
+  separate_rows(enhanced_tissues, sep = ",") %>% 
+  group_by(enhanced_tissues, specificity_category) %>%
+  summarise(n = n()) %>% 
+  ggplot(aes(enhanced_tissues, n, fill = specificity_category)) + 
+  geom_col() + 
+  geom_text(aes(label = n), 
+            position = "stack", 
+            hjust = 0) +
+  coord_flip() + 
+  scale_fill_manual(values = gene_category_pal) + 
+  stripped_theme_facet
+
+
+
+pbmc_data_filtered <- 
+  pbmc_data %>% 
+  as.matrix() %>% 
+  t() %>%
+  as_tibble() %>% 
+  set_colnames(data_ensg_id$ensg_id) %>%
+  select(enriched_genes$ensg_id) %>% 
+  mutate(cell_id = data_barcodes$barcode) %>% 
+  select(cell_id, everything())
+
+pbmc_data_long <- 
+  pbmc_data_filtered %>% 
+  gather(ensg_id, count, -1)
+
+
+
+cell_stats <- 
+  pbmc_data_long %>% 
+  group_by(cell_id) %>% 
+  summarise(n = sum(count), 
+            fract_0 = length(which(count == 0)) / length(count),
+            max_count = max(count))  
+
+gene_stats <- 
+  pbmc_data_long %>% 
+  group_by(ensg_id) %>% 
+  summarise(n = sum(count), 
+            fract_0 = length(which(count == 0)) / length(count), 
+            max_count = max(count))  
+
+cell_stats %>% 
+  ggplot(aes(n)) + 
+  geom_histogram() + 
+  scale_x_log10()
+
+cell_stats %>% 
+  ggplot(aes(fract_0)) + 
+  geom_histogram() + 
+  scale_x_log10()
+
+gene_stats %>% 
+  ggplot(aes(n)) + 
+  geom_histogram() + 
+  scale_x_log10()
+
+gene_stats %>% 
+  ggplot(aes(fract_0)) + 
+  geom_histogram() + 
+  scale_x_log10()
+
+filtered_cells <- 
+  cell_stats %>% 
+  filter(n >= 100 & fract_0 < 0.99)
+
+filtered_genes <- 
+  gene_stats %>% 
+  filter(fract_0 < 0.99 & max_count > 1, n >= 10)
+
+top_enriched_genes <-
+  enriched_genes %>% 
+  filter(specificity_category == "Tissue enriched") %>%
+  left_join(gene_stats) %T>% 
+  {g <- ggplot(., aes(enhanced_tissues, max_count)) + 
+    geom_violin() + 
+    coord_flip() + 
+    scale_y_log10();print(g)}
+
+# pbmc_data_filtered %>% 
+#   # filter(cell_id %in% filtered_cells$cell_id) %>%
+#   column_to_rownames("cell_id") %>% 
+#   {log10(. + 1)} %>% 
+#   head(100) %>% 
+#   pheatmap(color = heatmap_palette, 
+#            clustering)
+```
+
+
+```{r}
+
+cell_pca <- 
+  pbmc_data_filtered %>% 
+  select(1, filtered_genes$ensg_id) %>%
+  # filter(cell_id %in% filtered_cells$cell_id) %>%
+  column_to_rownames("cell_id") %>% 
+  {log10(. + 1)} %>%
+  pca_calc(npcs = 1000)
+
+cell_pca$scores %>% 
+  as_tibble(rownames = "cell_id") %>% 
+  ggplot(aes(PC1, PC2)) +
+  geom_hex(aes(fill = stat(log10(count))), 
+           bins = 100) + 
+  scale_fill_viridis_c()
+
+cell_expression_summary <- 
+  pbmc_data_long %>% 
+  filter(ensg_id %in% top_enriched_genes$ensg_id) %>% 
+  inner_join(top_enriched_genes %>% 
+               select(ensg_id, enhanced_tissues)) %>%
+  mutate(log_count = log10(count + 1)) %>%
+  # head(100000) %>%
+  group_by(ensg_id) %>% 
+  mutate(mean_count = mean(log_count), 
+         sd_count = sd(log_count),
+         z_score = (log_count-mean_count)/sd_count) %>% 
+  ungroup() %>%
+  filter(sd_count > 0) %>%
+  group_by(enhanced_tissues, cell_id) %>% 
+  summarise(max_score = max(z_score, na.rm = T),
+            mean_score = mean(z_score, na.rm = T)) %>% 
+  ungroup()
+  
+            
+
+plot_data <- 
+  cell_pca$scores %>% 
+  as_tibble(rownames = "cell_id") %>% 
+  left_join(cell_expression_summary)
+
+plot_data %>% 
+  # filter(enhanced_tissues %in% c("neutrophil", "T-reg")) %>%
+  ggplot(aes(PC1, PC2, z = max_count)) +
+  stat_summary_hex(fun = "max") +
+  facet_wrap(~enhanced_tissues) + 
+  scale_fill_viridis_c()
+#####
+
+cell_umap <- 
+  cell_pca$scores[, 1:100] %>% 
+  umap_calc(npcs = 2)
+
+
+cell_umap$layout %>% 
+  as_tibble(rownames = "cell_id") %>% 
+  ggplot(aes(V1, V2)) +
+  geom_hex(aes(fill = stat(log10(count))), 
+           bins = 100) + 
+  scale_fill_viridis_c()
+
+plot_data <- 
+  cell_umap$layout %>% 
+  as_tibble(rownames = "cell_id") %>% 
+  left_join(cell_expression_summary)
+
+
+plot_data %>% 
+  # filter(enhanced_tissues %in% c("neutrophil", "T-reg")) %>%
+  ggplot(aes(V1, V2, z = max_score)) +
+  stat_summary_hex(fun = "max") +
+  facet_wrap(~enhanced_tissues) + 
+  scale_fill_viridis_c()
+```
+
+#MOFA test
+
+```{r}
+
+data("scMT_data")
+exprmap <- data.frame(
+    primary = c("Jack", "Jill", "Barbara", "Bob"),
+    colname = c("array1", "array2", "array3", "array4"),
+    stringsAsFactors = FALSE)
+
+methylmap <- data.frame(
+    primary = c("Jack", "Jack", "Jill", "Barbara", "Bob"),
+    colname = c("methyl1", "methyl2", "methyl3", "methyl4", "methyl5"),
+    stringsAsFactors = FALSE)
+
+rnamap <- data.frame(
+    primary = c("Jack", "Jill", "Bob", "Barbara"),
+    colname = c("samparray1", "samparray2", "samparray3", "samparray4"),
+    stringsAsFactors = FALSE)
+
+gistmap <- data.frame(
+    primary = c("Jack", "Bob", "Jill"),
+    colname = c("samp0", "samp1", "samp2"),
+    stringsAsFactors = FALSE)
+
+## Combine as a named list and convert to a DataFrame
+maplist <- list(Affy = exprmap, Methyl450k = methylmap,
+    RNASeqGene = rnamap, GISTIC = gistmap)
+
+## Create a sampleMap
+sampMap <- listToMap(maplist)
+## Create an example phenotype data
+colDat <- data.frame(sex = c("M", "F", "M", "F"), age = 38:41,
+    row.names = c("Jack", "Jill", "Bob", "Barbara"))
+
+## Create a MultiAssayExperiment instance
+mae <- MultiAssayExperiment(experiments = ExpList, colData = colDat,
+    sampleMap = sampMap)
+
+
+MultiAssayExperiment(colData = pbmc_data_filtered %>%
+                       column_to_rownames("cell_id"), 
+                     sampleMap = pbmc_data_filtered %>% 
+                       select(1) %>% column_to_rownames("cell_id")
+                     )
+
+cell.data <- 
+  pbmc_data_filtered %>% 
+  select(1) %>% 
+  mutate(mock = 1) %>%
+  column_to_rownames("cell_id") 
+  
+
+
+
+PBMC_MAE <- 
+  MultiAssayExperiment(experiments = list("TMT_proteomics" = pbmc_data_filtered %>%
+       column_to_rownames("cell_id") %>% 
+       
+       t(),
+       colData=cell.data))
+
+PBMC_MOFA <- createMOFAobject(PBMC_MAE)
+
+plotDataOverview(PBMC_MOFA)
+
+DataOptions <- getDefaultDataOptions()
+ModelOptions <- getDefaultModelOptions(PBMC_MOFA)
+TrainOptions <- getDefaultTrainOptions()
+TrainOptions$seed <- 2018
+
+PBMC_MOFA <- 
+  prepareMOFA(PBMC_MOFA, 
+              DataOptions = DataOptions,
+              ModelOptions = ModelOptions,
+              TrainOptions = TrainOptions)
+
+PBMC_MOFA <- runMOFA(PBMC_MOFA)
+
+
+```
+

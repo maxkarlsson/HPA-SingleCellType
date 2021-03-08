@@ -1,0 +1,86 @@
+name	value
+?	gray
+Amacrine	#FFDD00
+Atrial Cardiomyocyte	#DE6C7D
+B cells	#66287F
+Basal	tan
+Basal cells	tan
+Basal epithelia	tan
+Bipolar	#FFDD00
+Cones	orange
+Dendritic cells	#199985
+Endothelial cells	brown
+Enterocytes	tan
+Epithelial cells	tan
+Epithelial cells of prostatic glands	tan
+Extravillous trophoblasts	tan
+Fibroblastss	tan2
+Fibroblasts	tan2
+Glomerular parietal Epithelial cells	tan
+Goblet	tan
+Granulocytes	#F39B7F
+Hepatocytes	#D1CBE5
+Hofbauer cells	#E64B35
+Horizontal	orange
+Leydig and myoid-like cells	#95D4F5
+Luminal 1	brown
+Luminal 2	brown
+Macrophages	#E64B35
+Monocytes	#E64B35
+Muller	#FFDD00
+Myeloid	#E64B35
+Myofibroblasts	tan2
+NK cells	#AD1D78
+Paneth cells	tan
+Progenitor cells	green3
+Proximal tubule	#F9A266
+Retinal ganglion cells	orange
+Retinal pigment Epithelial cells	tan
+Rods	orange
+Sertoli cells	#95D4F5
+Smooth muscle cells	#DE6C7D
+Spermatocytes	#95D4F5
+Spermatogonia	#95D4F5
+Stellate cells	#F9A266
+stem cells	darkblue
+Syncytiotrophoblast	tan
+T cells	#7D8DAF
+Transient amplifying cells	#1280C4
+Vascular	brown
+Ventricular Cardiomyocyte	#DE6C7D
+Villous cytotrophoblast	tan
+Type II pneumocytes	tan
+Type I pneumocytes	tan
+ 	gray
+Unknown cell type	gray
+Bronchial epithelium, ciliated cells	tan
+Bronchial epithelium, mucus-secreting cells	tan
+Syncytotrophoblasts	tan
+acinary	tan
+Inflammatory cells	#b30000
+Vesicula seminalis	#95D4F5
+Vesicula seminalis transcripts	#95D4F5
+Urothelium	tan
+Urothelium transcripts	tan
+Dendritic cell	#199985
+Mono	#E64B35
+Dendritic cell myeloid	#199985
+Erythrocytes	#b30000
+Dendritic cell plasmacytoid	#199985
+Basophils	#F39B7F
+NK	#AD1D78
+MAIT	#7D8DAF
+Neutrophils	#F39B7F
+Spermatogonia and fibroblasts	blue
+Leydig cells and fibroblasts	blue
+Leydig cells and myoid cells	blue
+Leydig cells and Sertoli cells	blue
+Myoid cells	blue
+Spermatids and Sertoli cells	blue
+Fibroblasts and Leydig cells	blue
+Fibroblasts and myoid cells	blue
+Spermatogonia and myoid cells	blue
+Spermatocytes, spermatids and Sertoli cells	blue
+Myoid cells?	blue
+Myoid cells and Sertoli cells?	blue
+Leydig cells	blue

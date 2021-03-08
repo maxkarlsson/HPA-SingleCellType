@@ -1,0 +1,1660 @@
+---
+title: "Classification"
+author: "Max J. Karlsson"
+date: "2020 M03 3"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+#Setup
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(magrittr)
+library(umap)
+library(pcaMethods)
+library(pheatmap)
+library(ggalluvial)
+library(dendextend)
+library(ggdendro)
+library(patchwork)
+library(ggraph)
+library(igraph)
+
+setwd("C:/Users/max.karlsson/Documents/Scilifelab/Projects/Blood cell deconvolution")
+
+source("scripts/theme.R")
+source("scripts/functions_classification.R")
+source("scripts/functions_graphics.R")
+source("scripts/functions_utility.R")
+
+
+blood_cell_category <- 
+  read_delim("data/bloodcells_hpa_regional_category_92.tsv", delim = "\t")
+
+blood_cell_category_fine <- 
+  read_delim("data/bloodcells_hpa_category_92.tsv", delim = "\t")
+
+blood_cell_hierarchy <- 
+  read_delim("data/meta/blood_atlas_hierarchy.txt", delim = "\t")
+
+gene_info92 <- 
+  read_delim("data/geninfo_92.tsv", delim = "\t")
+
+CD_marker_list <- 
+  read_delim("data/20180628 CD markers ProteinAtlas.tsv", delim = "\t")
+
+
+
+datafile_list <- 
+  list.files("data/EXPresults_used_for_demo/", 
+           include.dirs = T, recursive = T) %>% 
+  enframe("file", "filepath") %>% 
+  group_by(filepath) %>%
+  mutate(dataset = gsub("/.*", "", filepath), 
+         filename = gsub(paste0(dataset, "/"), "", filepath),
+         
+         filetype = case_when(filename == dataset ~ "folder", 
+                              grepl("cluster2cellNames.txt$", filename) ~ "cluster names",
+                              grepl("Top100DiffExpGenesPerGroup.txt$", filename) ~ "top genes",
+                              grepl("corrMat_HPA_BLOOD", filename) ~ "blood correlation",
+                              grepl("corrMat_HPA_TISSUE", filename) ~ "tissue correlation",
+                              grepl("count_grouped.txt$", filename) ~ "counts",
+                              grepl("scEXP_cell_types_standard.txt$", filename) ~ "normalized counts")) %>% 
+  ungroup() %>% 
+  filter(dataset != "discard")
+
+datafile_list %>% 
+  group_by(filetype) %>% 
+  summarise(n = n())
+
+all_datasets <- 
+  datafile_list %>%
+  pull(dataset) %>% 
+  unique() 
+
+load_datasets <- 
+  # c("PBMCs", "Placenta blood")
+  all_datasets
+
+cluster_names <- 
+  datafile_list %>% 
+  filter(dataset %in% load_datasets) %>% 
+  filter(filetype == "cluster names") %>%
+  group_by(dataset) %>% 
+  do({
+    read_delim(paste0("data/EXPresults_used_for_demo/", .$filepath), delim = "\t", 
+               col_names = c("cluster_id", "name"))
+  }) %>% 
+  ungroup() %>% 
+  mutate(cluster_id = factor(cluster_id, levels = cluster_levels), 
+         dataset_i = unclass(as_factor(dataset)))
+
+cluster_top_genes <- 
+  datafile_list %>% 
+  filter(dataset %in% load_datasets) %>% 
+  filter(filetype == "top genes") %>%
+  group_by(dataset) %>% 
+  do({
+  
+    read_delim(paste0("data/EXPresults_used_for_demo/", .$filepath), delim = "\t") %>% 
+      mutate(order = row_number()) %>%
+      gather(cluster_id, gene, -order)
+  }) %>% 
+  ungroup() %>% 
+  mutate(cluster_id = factor(cluster_id, levels = cluster_levels))
+
+
+cluster_blood_cor <- 
+  datafile_list %>% 
+  filter(dataset %in% load_datasets) %>% 
+  filter(filetype == "blood correlation") %>%
+  group_by(dataset) %>% 
+  do({
+  
+    read_delim(paste0("data/EXPresults_used_for_demo/", .$filepath), delim = "\t") %>% 
+      gather(cluster, correlation, -1)
+  }) %>% 
+  ungroup() %>% 
+  rename(cell_type = `Blood cell types`) %>% 
+  mutate(cluster_id = gsub("\\(.*\\)", "", cluster),
+         n_cells = gsub("\\(|\\)", "", str_extract(cluster, "\\(.*\\)$"))) %>% 
+  select(1:3, cluster_id, n_cells, correlation) %>% 
+  mutate(cluster_id = factor(cluster_id, levels = cluster_levels))
+
+cluster_norm_count <- 
+  datafile_list %>% 
+  filter(dataset %in% load_datasets) %>% 
+  filter(filetype == "normalized counts") %>%
+  group_by(dataset) %>% 
+  do({
+  
+    read_delim(paste0("data/EXPresults_used_for_demo/", .$filepath), delim = "\t") %>% 
+      gather(cluster_id, norm_count, -1)
+  }) %>% 
+  ungroup() %>% 
+  filter(Features != "Cell No.") %>% 
+  rename(ensg_id = Features) %>% 
+  filter(cluster_id != "TOTAL") %>% 
+  mutate(cluster_id = factor(cluster_id, levels = cluster_levels))
+
+cluster_blood_cor %>%
+  select(dataset, cluster_id, n_cells) %>% 
+  unique() %>% 
+  filter(cluster_id != "TOTAL") %>%
+  ggplot(aes(cluster_id, as.numeric(n_cells), fill = as.numeric(n_cells) > 200)) + 
+  geom_col() + 
+  facet_wrap(~dataset) + 
+  coord_flip()
+
+source("scripts/annotation_file.R")
+cluster_annotation
+
+```
+
+#Basic plots
+
+```{r}
+
+
+cluster_top_genes %>% 
+  left_join(cluster_annotation) %>%
+  left_join(gene_info92 %>% 
+              select(1, 2),
+            by = c("gene" = "gene_name")) %>% 
+  left_join(blood_cell_category) %>% 
+  separate_rows(enhanced_tissues, sep = ",") %>%
+  mutate(enhanced_tissues = ifelse(is.na(enhanced_tissues),
+                                   specificity_category, 
+                                   enhanced_tissues)) %>%
+  filter(specificity_category %in% c("Tissue enriched", "Group enriched")) %>%
+  group_by(dataset, cluster, cluster_id, unique_cluster_id, enhanced_tissues) %>% 
+  summarise(n = n()) %>%  
+  ungroup() %>%
+  mutate(enhanced_tissues = str_to_sentence(enhanced_tissues),
+         cluster_id = factor(cluster_id, 
+                             levels = paste0("Cluster-", 0:100))) %>%
+  ggplot(aes(unique_cluster_id, n, fill = enhanced_tissues)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c(tissue_colors, gene_category_pal)) + 
+  facet_wrap(~dataset, scales = "free")
+
+
+cluster_blood_cor %>% 
+  mutate(dataset_cluster = paste(dataset, cluster_id, sep = "_")) %>%
+  select(dataset_cluster, cell_type, correlation) %>% 
+  spread(cell_type, correlation) %>% 
+  column_to_rownames("dataset_cluster") %>% 
+  pheatmap(clustering_method = "ward.D2", 
+           cutree_cols = 6, 
+           cutree_rows = 4,
+           annotation_row = cluster_annotation %>%
+             select(cluster, celltype_annotation = celltype, dataset) %>%
+             column_to_rownames("cluster"),
+           annotation_col = blood_cell_hierarchy %>% 
+             select(content, celltype = content_l1) %>% 
+             column_to_rownames("content"),
+           annotation_colors = list(celltype = tissue_colors,
+                                    celltype_annotation = tissue_colors),
+           annotation_legend = F)
+
+```
+
+##CD marker PCA
+
+```{r}
+
+pca_data <- 
+  cluster_norm_count %>% 
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  select(unique_cluster_id, ensg_id, norm_count) %>%
+  spread(unique_cluster_id, norm_count) %>% 
+  column_to_rownames("ensg_id") %>% 
+  {log10(. + 1)} %>% 
+  t()
+
+cluster_umap1 <- 
+  pca_data %>% 
+  umap_calc(npcs = 2, n_neighbors = 200)
+
+cluster_umap1$layout %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  
+  
+  ggplot(aes(V1, V2, color = celltype)) + 
+  
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(V1, V2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(1, 1)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  
+  stripped_theme
+
+ggsave(savepath("total UMAP.pdf"), width = 10, height = 10) 
+
+####
+CD_pca_data <- 
+  cluster_norm_count %>% 
+  filter(ensg_id %in% CD_marker_list$Ensembl) %>% 
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  select(unique_cluster_id, ensg_id, norm_count) %>%
+  spread(unique_cluster_id, norm_count) %>% 
+  column_to_rownames("ensg_id") %>% 
+  {log10(. + 1)} %>% 
+  t()
+
+
+cluster_norm_spearman <- 
+  cluster_norm_count %>%
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id"))  %>% 
+  select(cluster, ensg_id, norm_count) %>%
+  spread(cluster, norm_count) %>% 
+  column_to_rownames("ensg_id") %>% 
+  {log10(. + 1)} %>% 
+  cor(method = "spearman")
+
+cluster_norm_spearman %>% 
+  pheatmap(annotation_row = cluster_annotation %>% 
+             select(cluster, celltype) %>% 
+             column_to_rownames("cluster"),
+           annotation_colors = list(celltype = tissue_colors))
+
+cluster_CD_pca <- 
+  CD_pca_data %>% 
+  pca_calc(npcs = 10)
+
+PC1_lims <- 
+  cluster_CD_pca$scores[,"PC1"] %>%
+  {c(min(.), max(.))}
+
+PC2_lims <- 
+  cluster_CD_pca$scores[,"PC2"] %>%
+  {c(min(.), max(.))}
+
+cluster_CD_pca$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(PC1, PC2, color = celltype)) + 
+  
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 50, 
+                  show.legend = F, h = c(4, 4)) +
+  
+  # scale_x_continuous(expand = expand_scale(0.5))+
+  # scale_y_continuous(expand = expand_scale(0.5))+
+  
+  geom_text(data = cluster_CD_pca$loadings %>% 
+              as_tibble(rownames = "ensg_id") %>% 
+              left_join(gene_info92) %>% 
+              select(1:3, gene_name) %>% 
+              mutate(PC1 = scales::rescale(PC1, PC1_lims),
+                     PC2 = scales::rescale(PC2, PC2_lims),
+                     len = sqrt(PC1^2 + PC2^2)) %>% 
+              arrange(-len) %>% 
+              head(2000),
+            aes(PC1, PC2, label = gene_name ),
+            inherit.aes = F, 
+            alpha = 0.4) + 
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  
+  
+  stripped_theme
+ggsave(savepath("All CD marker PCA.pdf"), width = 10, height = 10) 
+
+
+cluster_CD_umap1 <- 
+  CD_pca_data %>% 
+  umap_calc(npcs = 2, n_neighbors = 200)
+
+cluster_CD_umap1$layout %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(V1, V2, color = celltype)) + 
+   stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(V1, V2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 50, 
+                  show.legend = F, h = c(2, 2)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  stripped_theme
+
+ggsave(savepath("All CD marker UMAP.pdf"), width = 10, height = 10) 
+
+search_genes <- 
+  c("CCR3" = "Granulocytes",
+    "CD3D" = "T-cell",
+    "CD3E" = "T-cell",
+    "CD4" = "T, DC, mono", 
+    "CD8A" = "T-cell",
+    "CD8B" = "T-cell",
+    "CD14" = "Mono, DC",
+    "CD15" = "All",
+    "CD19" = "B-cell", 
+    "CD27" = "B-cell, T-cell",
+    "CD33" = "DC myeloid",
+    "CD34" = "Endothelium",
+    "CD38" = "Hematopoetic cells",
+    "CDH5" = "Endothelium, immune = 0", 
+    "CD48" = "Hematopoetic cells, endo",
+    "CEACAM8" = "Granu (+mono?)",
+    "CLEC4G" = "Endothelium",
+    "CR2" = "Epithelium, B-cell",
+    "ECSCR" = "Endothelium",
+    "EPCAM" = "Epithelium",
+    "ERG" = "Endothelium",
+    "ESAM" = "Endothelium",
+    "FCGR2B" = "Endothelium", 
+    "FCN3" = "Endothelium",
+    "GYPA" = "Erythrocyte", 
+    "GZMB" = "DC plasmacytoid",
+    "HLA-DRA" = "B, DC, mono", 
+
+	
+	
+	
+
+
+    "HLA-DRB1" = "B, DC, mono", 
+    "HLA-DRB5" = "B, DC, mono", 
+    "IL3RA" = "DC, Baso", 
+    "ITGAX" = "Mono, DC, NK",  
+    "JCHAIN" = "B, pDC",
+    "KRT6A" = "Epithelium",
+    "KRT6B" = "Epithelium",
+    "KRT13" = "Epithelium",
+    "KRT16" = "Epithelium",
+    "KRT19" = "Epithelium",
+    "KRT20" = "Epithelium",
+    "KRT75" = "Epithelium",
+    "KRT82" = "Epithelium",
+    
+    "KLRB1" = "NK, MAIT",
+    "MCAM" = "Endothelial", 
+    "MME" = "Endoth, Neutro",
+    "MS4A1" = "B-cell",
+    "MZB1" = "B-cell",
+    "NCAM1" = "NK-cell",
+    "NRP2" = "Endothelium",
+    "PECAM1" = "Endothelium",
+    "POU2AF1" = "B-cell",
+    "PTPRC" = "Hematopoetic cells",
+    "ROBO4" = "Endothelium",
+    "SELE" = "Endothelium (activated)",
+    "TRBC2" = "T-cell",
+    "VCAM1" = "Endothelium") %>% 
+  enframe("gene_name", "marker_for") %>% 
+  left_join(gene_info92 %>% select(gene_name, ensg_id))
+
+# cluster_norm_count %>% 
+#   # filter(ensg_id %in% CD_marker_list$Ensembl) %>% 
+#   left_join(cluster_annotation) %>% 
+#   left_join(gene_info92) %>% 
+#   inner_join(search_genes) %>%
+#   # group_by(ensg_id) %>% 
+#   # mutate(IQR = IQR(log10(norm_count + 1))) %T>%
+#   # {g <- ggplot(., aes(IQR)) + 
+#   #     geom_density(); print(g)} %>% 
+#   # ungroup() %>%
+#   # filter(IQR > 1) %>%
+#   # filter(gene_name == sample(gene_name, 1)) %>%
+#   ggplot(aes(cluster, norm_count, fill = celltype)) +
+#   geom_col() +
+#   coord_flip() + 
+#   scale_fill_manual(values = tissue_colors) + 
+#   facet_wrap(~gene_name + marker_for, scales = "free_x")
+  
+
+CD_pca_data2 <- 
+  cluster_norm_count %>% 
+  filter(ensg_id %in% search_genes$ensg_id) %>% 
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  select(unique_cluster_id, ensg_id, norm_count) %>%
+  group_by(ensg_id) %>% 
+  mutate(norm_count = log10(norm_count + 1),
+         norm_count = norm_count / sqrt(sum(norm_count^2)/(length(norm_count)-1))) %>%
+  spread(unique_cluster_id, norm_count) %>% 
+  column_to_rownames("ensg_id") %>% 
+  t()
+
+cluster_CD_pca2 <- 
+  CD_pca_data2 %>% 
+  pca_calc(npcs = 10)
+
+PC1_lims <- 
+  cluster_CD_pca2$scores[,"PC1"] %>%
+  {c(min(.), max(.))}
+
+PC2_lims <- 
+  cluster_CD_pca2$scores[,"PC2"] %>%
+  {c(min(.), max(.))}
+
+cluster_CD_pca2$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(PC1, PC2, color = celltype)) + 
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(4, 4)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  
+  geom_text(data = cluster_CD_pca2$loadings %>% 
+              as_tibble(rownames = "ensg_id") %>% 
+              left_join(gene_info92) %>% 
+              select(1:3, gene_name) %>% 
+              mutate(PC1 = scales::rescale(PC1, PC1_lims),
+                     PC2 = scales::rescale(PC2, PC2_lims),
+                     len = sqrt(PC1^2 + PC2^2)) %>% 
+              arrange(-len) %>% 
+              head(150),
+            aes(PC1, PC2, label = gene_name ),
+            inherit.aes = F, 
+            alpha = 0.5) + 
+  stripped_theme
+ggsave(savepath("Selected CD marker PCA.pdf"), width = 10, height = 10) 
+
+
+
+cluster_CD_umap <- 
+  CD_pca_data2 %>% 
+  umap_calc(npcs = 2)
+
+g1 <- 
+  cluster_CD_umap$layout %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(V1, V2, color = celltype)) + 
+   stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(V1, V2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(4, 4)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  stripped_theme
+
+ggsave(savepath("Selected CD marker UMAP.pdf"), plot = g1, width = 10, height = 10) 
+
+
+CD_umap_immune_assignment <- 
+  cluster_CD_umap$layout %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  mutate(suspected_immune = V1 < 0 & V2 < -1)
+
+g2 <- 
+  CD_umap_immune_assignment %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(V1, V2, color = suspected_immune)) + 
+  
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  # scale_color_manual(values = tissue_colors) + 
+  # scale_fill_manual(values = tissue_colors) + 
+  
+  stripped_theme
+
+g1 + g2
+
+
+cluster_norm_count %>% 
+  left_join(gene_info92 %>% 
+              select(ensg_id, gene_name)) %>%
+  filter(gene_name %in% c("PTPRC", "PTPRCAP", "CDH5", "CD48")) %>%
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  group_by(ensg_id) %>% 
+  # mutate(norm_count = log10(norm_count + 1),
+  #        norm_count = norm_count / sqrt(sum(norm_count^2)/(length(norm_count)-1))) %>%
+  ungroup() %>%
+  select(-ensg_id) %>%
+  
+  spread(gene_name, norm_count) %>% 
+  ggplot(aes(PTPRC, CD48, color = celltype)) + 
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PTPRC, CD48, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(4, 4)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  scale_x_log10() + 
+  scale_y_log10() + 
+  stripped_theme + 
+  ggtitle("CD48 and PTPRC (CD45)", "Only expressed in immune cells")
+  
+
+
+```
+
+##PCA per cell type
+
+```{r}
+
+pca_plot <-  function(indata, gene_list) {
+  a_pca <- 
+    indata %>% 
+    filter(ensg_id %in% gene_list$ensg_id) %>% 
+    left_join(cluster_annotation,
+              by = c("dataset", "cluster_id")) %>% 
+    select(unique_cluster_id, ensg_id, norm_count) %>%
+    group_by(ensg_id) %>% 
+    mutate(norm_count = log10(norm_count + 1),
+           norm_count = norm_count / sqrt(sum(norm_count^2)/(length(norm_count)-1))) %>%
+    spread(unique_cluster_id, norm_count) %>% 
+    column_to_rownames("ensg_id") %>% 
+    t() %>% 
+    pca_calc(npcs = 2)
+  
+  PC1_lims <- 
+    a_pca$scores[,"PC1"] %>%
+    {c(min(.), max(.))}
+  
+  PC2_lims <- 
+    a_pca$scores[,"PC2"] %>%
+    {c(min(.), max(.))}
+  
+  a_pca$scores %>% 
+    as_tibble(rownames = "unique_cluster_id") %>% 
+    left_join(cluster_annotation) %>% 
+    ggplot(aes(PC1, PC2, color = celltype)) + 
+     stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(2, 2)) +
+    geom_point(size = 5, 
+               alpha = 0.7) + 
+    geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+              color = "black") +
+    scale_color_manual(values = tissue_colors) + 
+    scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+    geom_text(data = a_pca$loadings %>% 
+                as_tibble(rownames = "ensg_id") %>% 
+                left_join(gene_info92) %>% 
+                select(1:3, gene_name) %>% 
+                mutate(PC1 = scales::rescale(PC1, PC1_lims),
+                       PC2 = scales::rescale(PC2, PC2_lims),
+                       len = sqrt(PC1^2 + PC2^2)) %>% 
+                arrange(-len) %>% 
+                head(150),
+              aes(PC1, PC2, label = gene_name ),
+              inherit.aes = F, 
+              alpha = 0.5) + 
+    stripped_theme
+}
+
+search_genes_B <-
+  search_genes %>% 
+  filter(grepl("B(,|-)|ematop", marker_for))
+
+search_genes_T <-
+  search_genes %>% 
+  filter(grepl("T(,|-)|MAIT|ematop", marker_for))
+
+search_genes_NK <-
+  search_genes %>% 
+  filter(grepl("NK|ematop", marker_for))
+
+search_genes_DC <-
+  search_genes %>% 
+  filter(grepl("DC|ematop", marker_for))
+
+search_genes_mono <-
+  search_genes %>% 
+  filter(grepl("ono|ematop", marker_for))
+
+search_genes_endoth <-
+  search_genes %>% 
+  filter(grepl("ndo", marker_for))
+
+search_genes_epith <-
+  search_genes %>% 
+  filter(grepl("pith", marker_for))
+
+search_genes_hemato <-
+  search_genes %>% 
+  filter(grepl("ematop", marker_for))
+
+search_genes_granulocytes <-
+  blood_cell_category_fine %>% 
+  filter(enhanced_tissues %in% c("basophil", "eosinophil", "neutrophil")) %>% 
+  arrange(-ts_score) %>% 
+  group_by(enhanced_tissues) %>% 
+  top_n(10, ts_score) %>% 
+  left_join(gene_info92)
+
+pca_plot(cluster_norm_count, search_genes_B) + ggtitle("B-cell")
+ggsave(savepath("B-cell marker PCA.pdf"), width = 10, height = 10) 
+pca_plot(cluster_norm_count, search_genes_T) + ggtitle("T-cell")
+ggsave(savepath("T-cell marker PCA.pdf"), width = 10, height = 10) 
+pca_plot(cluster_norm_count, search_genes_NK) + ggtitle("NK-cell")
+ggsave(savepath("NK-cell marker PCA.pdf"), width = 10, height = 10) 
+pca_plot(cluster_norm_count, search_genes_DC) + ggtitle("DC-cell")
+ggsave(savepath("DC marker PCA.pdf"), width = 10, height = 10) 
+pca_plot(cluster_norm_count, search_genes_mono) + ggtitle("Monocyte")
+ggsave(savepath("Monocyte marker PCA.pdf"), width = 10, height = 10) 
+pca_plot(cluster_norm_count, search_genes_endoth) + ggtitle("Endothelium")
+ggsave(savepath("Endothelium marker PCA.pdf"), width = 10, height = 10) 
+pca_plot(cluster_norm_count, search_genes_epith) + ggtitle("Epithelium")
+ggsave(savepath("Epithelium marker PCA.pdf"), width = 10, height = 10) 
+
+
+
+pca_plot(cluster_norm_count, search_genes_granulocytes) + ggtitle("Granulocytes")
+ggsave(savepath("Granulocytes marker PCA.pdf"), width = 10, height = 10) 
+
+a_pca <- 
+  cluster_norm_count %>% 
+  filter(ensg_id %in% search_genes_granulocytes$ensg_id) %>% 
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  select(unique_cluster_id, ensg_id, norm_count) %>%
+  group_by(ensg_id) %>% 
+  mutate(norm_count = log10(norm_count + 1),
+         norm_count = norm_count / sqrt(sum(norm_count^2)/(length(norm_count)-1))) %>%
+  spread(unique_cluster_id, norm_count) %>% 
+  column_to_rownames("ensg_id") %>% 
+  t() %>% 
+  pca_calc(npcs = 2)
+
+PC1_lims <- 
+  a_pca$scores[,"PC1"] %>%
+  {c(min(.), max(.))}
+
+PC2_lims <- 
+  a_pca$scores[,"PC2"] %>%
+  {c(min(.), max(.))}
+
+a_pca$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(PC1, PC2, color = celltype)) + 
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(2, 2)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = c(tissue_colors, "EO" = "red", "NE" = "blue", "BA" = "purple")) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  geom_text(data = a_pca$loadings %>% 
+              as_tibble(rownames = "ensg_id") %>% 
+              left_join(gene_info92) %>% 
+              left_join(search_genes_granulocytes) %>% 
+              # select(1:3, gene_name) %>% 
+              mutate(type = case_when(enhanced_tissues == "eosinophil" ~ "EO",
+                                      enhanced_tissues == "neutrophil" ~ "NE",
+                                      enhanced_tissues == "basophil" ~ "BA"),
+                     PC1 = scales::rescale(PC1, PC1_lims),
+                     PC2 = scales::rescale(PC2, PC2_lims),
+                     len = sqrt(PC1^2 + PC2^2)) ,
+            aes(PC1, PC2, label = gene_name, color = type),
+            inherit.aes = F, 
+            alpha = 0.5) + 
+  stripped_theme
+
+  
+  
+  
+gran_data <- 
+  cluster_norm_count %>%
+  filter(ensg_id %in% c(search_genes_granulocytes$ensg_id, search_genes_hemato$ensg_id)) %>%
+  left_join(cluster_annotation) %>%
+  left_join(gene_info92) %>%
+  left_join(search_genes) %>% 
+  left_join(search_genes_granulocytes) %>% 
+  mutate(marker_for = ifelse(is.na(marker_for), 
+                             enhanced_tissues, 
+                             marker_for)) %>% 
+  select(1, 2, 3, 4, 5, 6, 7, 8, gene_name, marker_for) %>%
+  group_by(unique_cluster_id) %>%
+  mutate(blood_cell = norm_count[which(gene_name == "PTPRC")] > 150) %>%
+  filter(blood_cell) %>% 
+  ungroup()
+  
+
+gran_data %>%
+  ggplot(aes(cluster, norm_count, fill = celltype)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = tissue_colors) +
+  facet_wrap(~gene_name + marker_for, scales = "free_x")
+  
+
+
+a_pca <- 
+  gran_data %>% 
+  select(unique_cluster_id, ensg_id, norm_count) %>%
+  group_by(ensg_id) %>% 
+  mutate(norm_count = log10(norm_count + 1),
+         norm_count = norm_count / sqrt(sum(norm_count^2)/(length(norm_count)-1))) %>% 
+  ungroup() %>%
+  spread(unique_cluster_id, norm_count) %>% 
+  filter(complete.cases(.)) %>%
+  column_to_rownames("ensg_id") %>% 
+  
+  t() %>% 
+  pca_calc(npcs = 2)
+
+PC1_lims <- 
+  a_pca$scores[,"PC1"] %>%
+  {c(min(.), max(.))}
+
+PC2_lims <- 
+  a_pca$scores[,"PC2"] %>%
+  {c(min(.), max(.))}
+
+a_pca$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(PC1, PC2, color = celltype)) + 
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(2, 2)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = c(tissue_colors, "EO" = "red", "NE" = "blue", "BA" = "purple")) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  geom_text(data = a_pca$loadings %>% 
+              as_tibble(rownames = "ensg_id") %>% 
+              left_join(gene_info92) %>% 
+              left_join(search_genes_granulocytes) %>% 
+              # select(1:3, gene_name) %>% 
+              mutate(type = case_when(enhanced_tissues == "eosinophil" ~ "EO",
+                                      enhanced_tissues == "neutrophil" ~ "NE",
+                                      enhanced_tissues == "basophil" ~ "BA"),
+                     PC1 = scales::rescale(PC1, PC1_lims),
+                     PC2 = scales::rescale(PC2, PC2_lims),
+                     len = sqrt(PC1^2 + PC2^2)) ,
+            aes(PC1, PC2, label = gene_name, color = type),
+            inherit.aes = F, 
+            alpha = 0.5) + 
+  stripped_theme
+
+
+possible_gran_clusters <- 
+  a_pca$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  mutate(gran = PC1 < 0 | PC2 < -1)
+
+possible_gran_clusters %>% 
+  ggplot(aes(PC1, PC2, color = gran)) + 
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 20, 
+                  show.legend = F, h = c(2, 2)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  # scale_color_manual(values = c(tissue_colors, "EO" = "red", "NE" = "blue", "BA" = "purple")) + 
+  # scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.1)) + 
+  geom_text(data = a_pca$loadings %>% 
+              as_tibble(rownames = "ensg_id") %>% 
+              left_join(gene_info92) %>% 
+              left_join(search_genes_granulocytes) %>% 
+              # select(1:3, gene_name) %>% 
+              mutate(type = case_when(enhanced_tissues == "eosinophil" ~ "EO",
+                                      enhanced_tissues == "neutrophil" ~ "NE",
+                                      enhanced_tissues == "basophil" ~ "BA"),
+                     PC1 = scales::rescale(PC1, PC1_lims),
+                     PC2 = scales::rescale(PC2, PC2_lims),
+                     len = sqrt(PC1^2 + PC2^2)) ,
+            aes(PC1, PC2, label = gene_name, color = type),
+            inherit.aes = F, 
+            alpha = 0.5) + 
+  stripped_theme
+
+```
+
+##Immunecell markers
+
+```{r}
+
+cluster_norm_count %>% 
+  left_join(gene_info92 %>% 
+              select(ensg_id, gene_name)) %>%
+  filter(gene_name %in% c("PTPRC", "PTPRCAP", "CDH5", "CD48")) %>%
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  ggplot(aes(gene_name, norm_count, fill = celltype)) + 
+  geom_violin(alpha = 0.5, scale = "width") +
+  geom_hline(data = tibble(gene_name = c("CD48", "CDH5", "PTPRC", "PTPRCAP"),
+                           norm_count = c(30, 0, 30, 0)),
+             aes(yintercept = norm_count)) +
+  # geom_density(alpha = 0.5) + 
+  facet_wrap(~gene_name, scales = "free_x", nrow = 1) +
+  # scale_x_log10() + 
+  scale_y_log10() + 
+  scale_fill_manual(values = tissue_colors) + 
+  stripped_theme_facet + 
+  theme(panel.spacing = unit(0, "mm"))
+  
+
+
+ 
+  
+
+immune_pca <- 
+  cluster_norm_count %>% 
+  left_join(gene_info92 %>% 
+              select(ensg_id, gene_name)) %>%
+  filter(gene_name %in% c("CD48", "CDH5", "PTPRC", "PTPRCAP")) %>% 
+  left_join(cluster_annotation,
+            by = c("dataset", "cluster_id")) %>% 
+  select(unique_cluster_id, ensg_id, norm_count) %>%
+  group_by(ensg_id) %>% 
+  mutate(norm_count = log10(norm_count + 1),
+         norm_count = norm_count / sqrt(sum(norm_count^2)/(length(norm_count)-1))) %>%
+  spread(unique_cluster_id, norm_count) %>% 
+  column_to_rownames("ensg_id") %>% 
+  t() %>% 
+  pca_calc(npcs = 2)
+
+PC1_lims <- 
+  immune_pca$scores[,"PC1"] %>%
+  {c(min(.), max(.))}
+
+PC2_lims <- 
+  immune_pca$scores[,"PC2"] %>%
+  {c(min(.), max(.))}
+
+g1 <- 
+  immune_pca$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  ggplot(aes(PC1, PC2, color = celltype)) + 
+  stat_density_2d(data = . %>%
+                    group_by(celltype) %>% 
+                    mutate(n = n()) %>% 
+                    ungroup() %>% 
+                    filter(n > 1) %>% 
+                    filter(celltype != "Unknown"),
+                  geom = "polygon", 
+                  aes(PC1, PC2, 
+                      fill = celltype,
+                      alpha = as.factor(..level..)),
+                  inherit.aes = F,
+                  bins = 50, 
+                  show.legend = F, h = c(1, 1)) +
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  geom_text(aes(label = paste(dataset_i, str_extract(cluster_id, "\\d*$"))),
+            color = "black") +
+  scale_color_manual(values = tissue_colors) + 
+  scale_fill_manual(values = tissue_colors) + 
+  scale_alpha_discrete(range = c(0, 0.05)) + 
+  
+  geom_text(data = immune_pca$loadings %>% 
+              as_tibble(rownames = "ensg_id") %>% 
+              left_join(gene_info92) %>% 
+              select(1:3, gene_name) %>% 
+              mutate(PC1 = scales::rescale(PC1, PC1_lims),
+                     PC2 = scales::rescale(PC2, PC2_lims),
+                     len = sqrt(PC1^2 + PC2^2)) %>% 
+              arrange(-len) %>% 
+              head(150),
+            aes(PC1, PC2, label = gene_name ),
+            inherit.aes = F, 
+            alpha = 0.5) + 
+  stripped_theme
+
+g2 <- 
+  immune_pca$scores %>% 
+  as_tibble(rownames = "unique_cluster_id") %>% 
+  left_join(cluster_annotation) %>% 
+  left_join(CD_umap_immune_assignment) %>%
+  ggplot(aes(PC1, PC2, color = suspected_immune)) + 
+  
+  geom_point(size = 5, 
+             alpha = 0.7) + 
+  
+
+  stripped_theme
+  
+g1 + g2
+ggsave(savepath("Immune PCA.pdf"), width = 16, height = 10) 
+
+
+```
+
+
+##Barplot of CD markers
+
+```{r}
+
+plot_data <-
+  cluster_norm_count %>% 
+  # filter(ensg_id %in% CD_marker_list$Ensembl) %>% 
+  left_join(cluster_annotation) %>% 
+  left_join(gene_info92) %>% 
+  inner_join(search_genes) 
+  
+
+plots <- 
+  lapply(cluster_annotation$cluster,
+         function(chosen_cluster) {
+           plot_data %>%
+             
+             mutate(chosen = cluster == chosen_cluster) %>% 
+             group_by(chosen, ensg_id, gene_name, cluster_annotation, marker_for, celltype) %>%
+             summarise(norm_count = mean(norm_count)) %>%
+             filter(cluster_annotation != "Unknown" | chosen) %>%
+             ggplot(aes(chosen, norm_count, fill = celltype)) +
+             geom_col(position = "dodge") +
+             coord_flip() + 
+             scale_fill_manual(values = tissue_colors) + 
+             facet_wrap(~marker_for + gene_name, scales = "free_x") + 
+             ggtitle(chosen_cluster) + 
+             stripped_theme_facet
+         })
+pdf(savepath("CD marker facet plots per cluster.pdf"), width = 13, height = 13) 
+plots
+dev.off()
+
+#####
+
+plot_data <-
+  cluster_norm_count %>% 
+  # filter(ensg_id %in% CD_marker_list$Ensembl) %>% 
+  left_join(cluster_annotation) %>% 
+  left_join(CD_umap_immune_assignment) %>%
+  left_join(gene_info92) %>% 
+  inner_join(search_genes) 
+  
+mis_class_clusters <- 
+  CD_umap_immune_assignment %>% 
+  left_join(cluster_annotation) %>% 
+  filter((suspected_immune & celltype %in% c("Unknown", "Endothelial")) |
+           (!suspected_immune & !celltype %in% c("Unknown", "Endothelial")))
+
+plots <- 
+  lapply(sort(mis_class_clusters$cluster),
+         function(chosen_cluster) {
+           plot_data %>%
+             
+             mutate(chosen = cluster == chosen_cluster) %>% 
+             group_by(chosen, ensg_id, gene_name, cluster_annotation, marker_for, celltype) %>%
+             summarise(norm_count = mean(norm_count)) %>%
+             filter(cluster_annotation != "Unknown" | chosen) %>%
+             ggplot(aes(chosen, norm_count, fill = celltype)) +
+             geom_col(position = "dodge") +
+             coord_flip() + 
+             scale_fill_manual(values = tissue_colors) + 
+             facet_wrap(~marker_for + gene_name, scales = "free_x") + 
+             ggtitle(chosen_cluster) + 
+             stripped_theme_facet
+         })
+pdf(savepath("CD marker facet plots per cluster - potentially misclass.pdf"), width = 13, height = 13) 
+plots
+dev.off()
+
+#####
+
+plot_data <-
+  cluster_norm_count %>% 
+  # filter(ensg_id %in% CD_marker_list$Ensembl) %>% 
+  left_join(cluster_annotation) %>% 
+  left_join(CD_umap_immune_assignment) %>%
+  left_join(gene_info92) %>% 
+  inner_join(search_genes) 
+  
+no_class_clusters <- 
+  cluster_annotation %>% 
+  filter(celltype == "Unknown")
+
+plots <- 
+  lapply(sort(no_class_clusters$cluster),
+         function(chosen_cluster) {
+           plot_data %>%
+             
+             mutate(chosen = cluster == chosen_cluster) %>% 
+             group_by(chosen, ensg_id, gene_name, cluster_annotation, marker_for, celltype) %>%
+             summarise(norm_count = mean(norm_count)) %>%
+             filter(cluster_annotation != "Unknown" | chosen) %>%
+             ggplot(aes(chosen, norm_count, fill = celltype)) +
+             geom_col(position = "dodge") +
+             coord_flip() + 
+             scale_fill_manual(values = tissue_colors) + 
+             facet_wrap(~marker_for + gene_name, scales = "free_x") + 
+             ggtitle(chosen_cluster) + 
+             stripped_theme_facet
+         })
+pdf(savepath("CD marker facet plots per cluster - no class.pdf"), width = 13, height = 13) 
+plots
+dev.off()
+
+
+#####
+
+plot_data <-
+  cluster_norm_count %>% 
+  # filter(ensg_id %in% CD_marker_list$Ensembl) %>% 
+  left_join(cluster_annotation) %>% 
+  left_join(CD_umap_immune_assignment) %>%
+  left_join(gene_info92) %>% 
+  filter(ensg_id %in% gran_data$ensg_id) %>% 
+  left_join(gran_data %>% 
+              select(gene_name, marker_for))
+  
+gran_clusters <- 
+  gran_data %>% 
+  pull(cluster) %>% 
+  unique()
+
+plots <- 
+  lapply(sort(gran_clusters),
+         function(chosen_cluster) {
+           plot_data %>%
+             
+             mutate(chosen = cluster == chosen_cluster) %>% 
+             group_by(chosen, ensg_id, gene_name, cluster_annotation, marker_for, celltype) %>%
+             summarise(norm_count = mean(norm_count)) %>%
+             filter(cluster_annotation != "Unknown" | chosen) %>%
+             ggplot(aes(chosen, norm_count, fill = celltype)) +
+             geom_col(position = "dodge") +
+             coord_flip() + 
+             scale_fill_manual(values = tissue_colors) + 
+             facet_wrap(~marker_for + gene_name, scales = "free_x") + 
+             ggtitle(chosen_cluster) + 
+             stripped_theme_facet
+         })
+pdf(savepath("CD marker facet plots per cluster - grans.pdf"), width = 13, height = 13) 
+plots
+dev.off()
+
+```
+
+
+
+# Classification
+
+```{r}
+
+celltype_max_norm_count <- 
+  cluster_norm_count %>% 
+  left_join(cluster_annotation) %>% 
+  group_by(celltype, ensg_id) %>% 
+  summarise(norm_count = max(norm_count)) %>% 
+  ungroup()
+
+classification_max_norm_count <- 
+  celltype_max_norm_count %>% 
+  filter(celltype != "Unknown") %>%
+  hpa_gene_classification(expression_col = "norm_count", 
+                          tissue_col = "celltype", 
+                          gene_col = "ensg_id", 
+                          
+                          enr_fold =  4, 
+                          max_group_n = 2, 
+                          det_lim = 1)
+
+classification_sep_norm_count <- 
+  cluster_norm_count %>% 
+  left_join(cluster_annotation) %>%  
+  # filter(celltype != "Unknown") %>%
+  hpa_gene_classification_multi_sample(expression_col = "norm_count", 
+                                       tissue_col = "celltype", 
+                                       gene_col = "ensg_id", 
+                                       sample_col = "unique_cluster_id",
+                                       enr_fold =  4, 
+                                       max_group_n = 2, 
+                                       det_lim = 1)
+```
+
+##Classification plots
+
+```{r}
+classification_max_norm_count %>%
+  mutate(spec_category = str_to_sentence(spec_category),
+         dist_category = str_to_sentence(dist_category)) %>%
+  
+  multi_alluvial_plot(vars = c("Specificity" = "spec_category", 
+                               "Distribution" = "dist_category"), 
+                      chunk_levels = c('Tissue enriched', 'Group enriched', 
+                                       'Tissue enhanced', 'Low tissue specificity', 
+                                       'Detected in single',
+                                       'Detected in some', 
+                                       'Detected in many', 
+                                       'Detected in all',
+                                       'Not detected'), 
+                      pal = c(gene_category_pal, elevation_identity_pal), 
+                      color_by = c(1, 1)) 
+ggsave(savepath("single class comb n_genes alluvial.pdf"), width = 4, height = 6, useDingbats = F)
+
+
+class_table_temp <-
+  classification_max_norm_count %>%
+  select(gene, spec_category, enriched_tissues) %>%
+  separate_rows(enriched_tissues, sep = ";") %>%
+  mutate(spec_category = factor(spec_category, levels = rev(spec_category_levels)),
+         enriched_tissues = str_to_sentence(enriched_tissues))
+  
+plot_dendro <-
+  celltype_max_norm_count %>%
+  spread(celltype, norm_count) %>% 
+  column_to_rownames("ensg_id") %>%
+  cor(method = "spearman") %>%
+  {1 - .} %>%
+  as.dist() %>% 
+  hclust(method = "average") %>%
+  dendro_data()
+  
+  
+dendro_plot_data <- 
+  left_join(plot_dendro$segments, 
+            plot_dendro$labels, 
+            by = c("x" = "x", "yend" = "y")) 
+
+left_plot <- 
+  dendro_plot_data %>%
+  ggplot() +
+  geom_segment(aes(x=y, y=x, xend=yend, yend=xend, group = label))+
+  geom_rect(aes(xmin=0, ymin=x + 0.5, 
+                xmax=-0.02, ymax=xend - 0.5, 
+                fill = label), 
+            show.legend = F) +
+  scale_color_manual(values = celltype_pal)+
+  scale_fill_manual(values = celltype_pal)+
+  scale_x_reverse(expand = expand_scale(mult = 0.25), position = "top")+
+  
+  theme(axis.text.y = element_blank(), 
+        axis.title = element_blank(), 
+        axis.ticks.y = element_blank(),
+        plot.margin = unit(c(1,1,1,1), units = "mm"), 
+        panel.background = element_blank()) 
+
+right_plot <- 
+  class_table_temp %>%
+  filter(!is.na(enriched_tissues)) %>%
+  group_by(enriched_tissues, spec_category) %>%
+  summarise(n_genes = n()) %>%
+  ungroup() %>%
+  mutate(enriched_tissues = factor(enriched_tissues, levels = plot_dendro$labels$label)) %>%
+  ggplot(aes(enriched_tissues, n_genes, fill = spec_category)) +
+  geom_col(width = 0.8, size = 0.1) +
+  simple_theme +
+  scale_fill_manual(values = gene_category_pal, name = "Specificity") +
+  coord_flip() +
+  xlab("Tissue") +
+  ylab("Number of genes") +
+  scale_y_continuous(position = "bottom", expand = c(0,0)) + 
+  
+  theme(axis.text.y = element_text(hjust = 0.5), 
+        legend.position = c(0.7, 0.5),
+        axis.title.y = element_blank(),
+        panel.border = element_blank())
+
+left_plot + right_plot 
+
+ggsave(savepath("N enr genes per tissue + dendro 2.pdf"), width = 5, height = 3)
+
+classification_max_norm_count %>% 
+  left_join(gene_info92, by = c("gene" = "ensg_id")) %>%
+  select(1, gene_name, 2, 3, enriched_tissues) %>%
+  separate_rows(enriched_tissues, sep = ";") %>% 
+  
+  left_join(blood_cell_category %>%
+              separate_rows(enhanced_tissues, sep = ",") %>% 
+              select(1:3, enriched_tissues = enhanced_tissues),
+            by = c("gene" = "ensg_id"),
+            suffix = c("_singe_cell", "_blood_class")) %>%
+  filter(spec_category == "tissue enriched" | specificity_category == "Tissue enriched") %>%
+  group_by(enriched_tissues_singe_cell, enriched_tissues_blood_class) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  mutate(enriched_tissues_singe_cell = ifelse(is.na(enriched_tissues_singe_cell),
+                                              "Only enriched in bulk",
+                                              enriched_tissues_singe_cell),
+         enriched_tissues_blood_class = ifelse(is.na(enriched_tissues_blood_class),
+                                              "Only enriched in single",
+                                              enriched_tissues_blood_class)) %>%
+  mutate(enriched_tissues_blood_class = factor(enriched_tissues_blood_class,
+                                               levels = c("T-cells", 
+                                                          "B-cells",
+                                                          "NK-cells",
+                                                          "monocytes",
+                                                          "granulocytes", 
+                                                          "dendritic cells",
+                                                          "Only enriched in single")),
+         enriched_tissues_singe_cell = factor(enriched_tissues_singe_cell,
+                                               levels = c("T-cell", 
+                                                          "B-cell",
+                                                          "Monocyte",
+                                                          "Dendritic cell",
+                                                          "Only enriched in bulk"))) %>%
+  ggplot(aes(enriched_tissues_singe_cell, n, fill = enriched_tissues_blood_class)) +
+  geom_col() + 
+  scale_fill_manual(values = c(tissue_colors, "Only enriched in single" = "darkgray"), name = "Bulk classification") + 
+  ggtitle("Comparison of celltye enriched genes", "Genes that are celltype type enriched in either classification") + 
+  xlab("Single cell classification") + 
+  stripped_theme +
+  coord_flip()
+ggsave(savepath("N enriched genes bulk - single comparison.pdf"), width = 5, height = 3)
+
+classification_max_norm_count %>% 
+  left_join(gene_info92, by = c("gene" = "ensg_id")) %>% 
+  select(1, gene_name, 2, 3, 4, enriched_tissues, tissues_detected) %>% 
+  filter(gene_name %in% c("CD3D", 
+                          "CD3E", 
+                          "CD19"))
+```
+
+```{r class_network_2_whole_groups, echo=FALSE, message=FALSE, warning=FALSE}
+
+enrichment_whole_group <- 
+  classification_max_norm_count %>% 
+  select(1, 2, enriched_tissues) %>% 
+  filter(spec_category %in% c("tissue enriched", "group enriched")) %>% 
+  group_by(enriched_tissues, spec_category) %>% 
+  summarise(n_genes = n()) %>%
+  ungroup()
+
+net_data <-
+  enrichment_whole_group %>% 
+  mutate(all_enriched_tissues = enriched_tissues) %>%
+  separate_rows(enriched_tissues, sep = ";") %>%
+  group_by(enriched_tissues, spec_category) %>% 
+  mutate(rank = rank(-n_genes, ties.method = "min")) %>%
+  group_by(all_enriched_tissues) %>%
+  mutate(any_low_rank = any(rank <= 2)) %>%
+  ungroup() %>%
+  
+  mutate(edge_id = paste("enriched:", all_enriched_tissues)) %>% 
+    arrange(n_genes)
+  
+net_edges <- 
+  net_data %$% 
+  tibble(node1 = enriched_tissues, node2 = edge_id, n = n_genes) %>% 
+  unique()
+
+g <-
+  net_edges %>%
+  graph_from_data_frame(directed = FALSE) %>%
+  ggraph(layout = "kk") 
+
+link_map <- 
+  net_edges %>% 
+  gather(node, id, -(3:4)) %>% 
+  mutate(tissue_node = node == "node1", 
+         color_id = ifelse(tissue_node, id, !grepl(";", id)), 
+         label = ifelse(tissue_node, color_id, n)) %>%
+  select(n, node, id, tissue_node, color_id, label) %>%
+  unique()
+
+
+edge_data <- get_edges()(g$data)
+node_data <- 
+  get_nodes()(g$data) %>% 
+  as_tibble() %>%
+  left_join(link_map, 
+            by = c("name" = "id")) 
+  
+
+g + 
+  geom_edge_arc(aes(width = n), 
+                    color = "gray", 
+                strength = 0, 
+                show.legend = F) + 
+    scale_edge_alpha_continuous(range = c(0.3, 1)) +
+    scale_edge_width_continuous(range = c(1, 3)) +
+  
+  geom_node_point(data = node_data  %>%
+                    filter(!tissue_node),
+                  aes(size = log(n), 
+                      fill = color_id), 
+                  stroke = 1,
+                  # size = 10,
+                  shape = 21,
+                  show.legend = F)+
+  geom_node_point(data = node_data %>%
+                    filter(tissue_node),
+                  aes(fill = color_id), 
+                  stroke = 1,
+                  size = 20,
+                  shape = 21,
+                  show.legend = F)+
+  geom_node_text(data = node_data,
+                 aes(label = label),
+                 size = 4) +
+  scale_size_continuous(range = c(5, 10)) +
+  scale_fill_manual(values = c(celltype_pal, gene_category_pal)) +
+  
+  theme_void()
+
+ggsave(savepath("Network  enrichment whole group.pdf"), width = 16, height = 12, useDingbats = F)
+ggsave(savepath("Network  enrichment whole group.png"), width = 16, height = 12)
+
+
+# Save for cytoscape
+
+
+cyto_summary <- 
+  net_edges %>% 
+  mutate(category = ifelse(!grepl(";", node2), "Tissue enriched", "Group enriched"), 
+         node_id = unclass(factor(node2)),
+         node1 = str_to_sentence(node1), 
+         n_sqrt = sqrt(n), 
+         str_len = str_length(node1)) %>%
+  select(category, node1, node2, node_id, n, n_sqrt, str_len) 
+
+cyto_summary %T>% 
+  write_delim(savepath("cytoscape nodes summary whole group.txt"), delim = "\t") %>%
+  write_csv(savepath("cytoscape nodes summary whole group.csv"))
+
+bind_rows(cyto_summary %>% 
+            left_join(celltype_pal %>% 
+                        enframe("node1", "color")) %>% 
+            select(node_id = node1, 
+                   color) %>% 
+            unique() %>%
+            mutate(node_type = "Tissue"),
+          cyto_summary %>% 
+            mutate(color = case_when(category == "Tissue enriched" ~ "#e41a1c",
+                                     category == "Group enriched" ~ "#FF9D00"), 
+                   node_id = as.character(node_id)) %>%
+            select(node_id, color) %>% 
+            unique() %>%
+            
+            mutate(node_type = "Enrichment")) %>%
+  mutate(color2 = case_when(node_type == "Enrichment" ~ color,
+                            node_type == "Tissue" ~ "#D3D3D3FF"),
+         color3 = case_when(node_type == "Enrichment" ~ color,
+                            node_type == "Tissue" ~ "#BEBEBEFF")) %T>% 
+  
+  write_delim(savepath("cytoscape nodes color whole group.txt"), delim = "\t") %>%
+  write_csv(savepath("cytoscape nodes color whole group.csv"))
+
+bind_rows(cyto_summary %>% 
+            select(node_id = node1) %>% 
+            mutate(label = node_id) %>%
+            unique(),
+          cyto_summary %>% 
+            mutate(node_id = as.character(node_id), 
+                   label = as.character(n)) %>%
+            select(node_id, label) %>% 
+            unique()) %T>% 
+  write_delim(savepath("cytoscape nodes label whole group.txt"), delim = "\t") %>%
+  write_csv(savepath("cytoscape nodes label whole group.csv"))
+```
+
+##Multisample classification
+
+```{r}
+classification_sep_norm_count %>% 
+  filter(spec_category %in% c("tissue enriched")) %>%
+  select(gene, spec_category, enriched_tissues, enriched_samples) %>% 
+  
+  separate_rows(enriched_samples, sep = ";") %>% 
+  separate_rows(enriched_tissues, sep = ";") %>% 
+  group_by(enriched_samples, enriched_tissues) %>%
+  summarise(n = n()) %>% 
+  ungroup() %>%
+  select(1:3) %>% 
+  spread(enriched_tissues, n, fill = 0) %>%
+  column_to_rownames("enriched_samples") %>% 
+  pheatmap(color = heatmap_palette)
+
+classification_sep_norm_count %>% 
+  left_join(blood_cell_category, 
+            by = c("gene" = "ensg_id")) %>%
+  filter(spec_category %in% c("tissue enriched", "group enriched")) %>%
+  select(gene, spec_category, enriched_samples, enhanced_tissues) %>% 
+  
+  separate_rows(enriched_samples, sep = ";") %>% 
+  separate_rows(enhanced_tissues, sep = ",") %>% 
+  group_by(spec_category, enriched_samples, enhanced_tissues) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>%
+  filter(!is.na(enriched_samples)) %>%
+  
+  mutate(enhanced_tissues = ifelse(is.na(enhanced_tissues),
+                                   "Only enriched in single",
+                                   enhanced_tissues)) %>%
+  mutate(enhanced_tissues = factor(enhanced_tissues,
+                                   levels = c("T-cells",
+                                              "B-cells",
+                                              "NK-cells",
+                                              "monocytes",
+                                              "granulocytes",
+                                              "dendritic cells",
+                                              "Only enriched in single"))) %>%
+  left_join(cluster_annotation,
+            by = c("enriched_samples" = "unique_cluster_id")) %>%
+  ggplot(aes(cluster, n, fill = enhanced_tissues)) +
+  geom_col() + 
+  geom_text(data = . %>% 
+              group_by(cluster, enriched_samples) %>% 
+              summarise(n = sum(n)),
+            aes(cluster, n,
+                label = enriched_samples),
+            inherit.aes = F,
+            hjust = 0, 
+            size = 2) +
+  scale_fill_manual(values = c(tissue_colors, "Only enriched in single" = "darkgray"), name = "Bulk classification") + 
+  xlab("Single cell classification") + 
+  stripped_theme +
+  coord_flip() + 
+  scale_y_continuous(expand = expand_scale(c(0,0.15)))
+ggsave(savepath("N enriched genes bulk - single sample comparison.pdf"), width = 7, height = 5)
+
+```
+
+
+```{r multisample_class, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+net_data <-
+  classification_sep_norm_count %>% 
+  filter(spec_category %in% c("tissue enriched")) %>%
+  select(gene, spec_category, enriched_tissues, enriched_samples) %>% 
+  
+  separate_rows(enriched_samples, sep = ";") %>% 
+  separate_rows(enriched_tissues, sep = ";") %>% 
+  group_by(enriched_samples, enriched_tissues) %>%
+  summarise(n = n()) %>% 
+  ungroup() %>%
+  arrange(-n) %>%
+  mutate(edge_id = paste("enriched:", enriched_samples, enriched_tissues))
+  
+
+
+
+net_edges <- 
+  net_data %$% 
+  tibble(node1 = c(enriched_samples), 
+         node2 = c(enriched_tissues), 
+         n = c(n)) %>% 
+  unique()
+
+g <-
+  net_edges %>%
+  graph_from_data_frame(directed = FALSE) %>%
+  ggraph(layout = "kk") 
+
+# link_map <- 
+#   net_edges %>% 
+#   gather(node, id, -n, -type) %>% 
+#   mutate(sample_node = type == "sample",
+#          color_id = ifelse(sample_node, gsub(" \\d*$", "", id), "group"), 
+#          label = ifelse(sample_node, id, n)) %>%
+#   select(n, node, id, sample_node, color_id, label) %>%
+#   unique()
+
+
+edge_data <- get_edges()(g$data)
+node_data <- 
+  get_nodes()(g$data) %>% 
+  as_tibble()
+  
+
+g + 
+  geom_edge_arc(aes(label = n,
+                    width = sqrt(n),
+                    alpha = sqrt(n)), 
+                    color = "gray", 
+                strength = 0, 
+                show.legend = F) + 
+    scale_edge_alpha_continuous(range = c(0.3, 1)) +
+    scale_edge_width_continuous(range = c(1, 3)) +
+  
+  geom_node_point(data = node_data,
+                  aes(fill = gsub(" \\d*$", "", name)),
+                  stroke = 1,
+                  size = 20,
+                  shape = 21,
+                  show.legend = F)+
+  geom_node_text(data = node_data,
+                 aes(label = name),
+                 size = 4) +
+  scale_size_continuous(range = c(5, 10)) +
+  scale_fill_manual(values = tissue_colors) +
+  
+  theme_void()
+
+ggsave(savepath("Network  enrichment whole group.pdf"), width = 16, height = 12, useDingbats = F)
+ggsave(savepath("Network  enrichment whole group.png"), width = 16, height = 12)
+
+
+```

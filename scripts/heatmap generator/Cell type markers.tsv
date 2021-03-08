@@ -1,0 +1,121 @@
+Tissue	Cell type group	Cell type	Marker	Comment	Good IHC example (y/n)
+_General	Adipose tissue	Adipocytes	LIPE		
+_General	Adipose tissue	Adipocytes	PLIN1		
+_General	Adipose tissue	Adipocytes	FABP4		
+_General	Adipose tissue	Adipocytes	SLC7A10		
+_General	Adipose tissue	Adipocytes	PLIN4		
+_General	Epithelial cells	neuroendocrine cells	CHGA		
+_General	Epithelial cells	neuroendocrine cells	SCG2		
+_General	Epithelial cells	neuroendocrine cells	SCG5		
+_General	Epithelial cells	neuroendocrine cells	PCSK1N		
+_General	Epithelial cells	neuroendocrine cells	SCG3		
+_General	Epithelial cells	neuroendocrine cells	CHGB		
+_General	Epithelial cells	neuroendocrine cells	NPTX2		
+_General	Epithelial cells	neuroendocrine cells	VWA5B2		
+_General	Epithelial cells	neuroendocrine cells	CPLX2		
+_General	Epithelial cells	neuroendocrine cells	SYP	also ganglion cells	
+_General	Epithelial cells	neuroendocrine cells	PRPH	ganglion cells	
+_General	Immune cells	Granulocytes	CPA3		
+_General	Immune cells	Granulocytes	CCR3		
+_General	Immune cells	Granulocytes	TPSD1		
+_General	Immune cells	Inflammatory cells	PTPRC	General marker of inflammatory cells	
+_General	Immune cells	B lymphocytes	MS4A1		
+_General	Immune cells	B lymphocytes	CD79A		
+_General	Immune cells	B lymphocytes	CD19		
+_General	Immune cells	B lymphocytes	CR2		
+_General	Immune cells	B lymphocytes	CD72		
+_General	Immune cells	B lymphocytes	CD22		
+_General	Immune cells	B lymphocytes	MS4A1	CD20, low level expression also in T lymphocytes	
+_General	Immune cells	Macrophages	CD68		
+_General	Immune cells	Macrophages	CD163		
+_General	Immune cells	Macrophages	MRC1	CD206	
+_General	Immune cells	Macrophages	MARCO		
+_General	Immune cells	Macrophages	C1QB		
+_General	Immune cells	Macrophages	CCR1		
+_General	Immune cells	Macrophages	MSR1		
+_General	Immune cells	Macrophages	MRC1		
+_General	Immune cells	Macrophages	ITGAM		
+_General	Immune cells	Macrophages	CD33		
+_General	Immune cells	Fibroblasts	COL1A2		
+_General	Immune cells	Fibroblasts	COL1A1		
+_General	Immune cells	Fibroblasts	COL3A1		
+_General	Immune cells	Fibroblasts	COL6A3		
+_General	Immune cells	Fibroblasts	COL5A1		
+_General	Immune cells	Fibroblasts	COL5A2		
+_General	Immune cells	Fibroblasts	FBN1		
+_General	Immune cells	Fibroblasts	MFAP2		
+_General	Immune cells	T lymphocytes	CD3E		
+_General	Immune cells	T lymphocytes	CD2		
+_General	Immune cells	T lymphocytes	LCK		
+_General	Immune cells	T lymphocytes	CD3D		
+_General	Immune cells	T lymphocytes	CD3G		
+_General	Immune cells	T lymphocytes	CD8A		
+_General	Immune cells	T lymphocytes	CD5		
+_General	Immune cells	T lymphocytes	UBASH3A		
+_General	Immune cells	T lymphocytes	CD8B		
+_General	Mesenchymal cells	Mesenchymal cells	VIM	General marker for mesenchymal cells	
+_General	Muscle cells	Smooth muscle cells	ACTA2		
+_General	Muscle cells	Smooth muscle cells	MYL9		
+_General	Muscle cells	Smooth muscle cells	ACTG2		
+_General	Muscle cells	Smooth muscle cells	FLNA		
+_General	Muscle cells	Smooth muscle cells	CALD1		
+_General	Muscle cells	Smooth muscle cells	CNN1		
+_General	Muscle cells	Smooth muscle cells	KCNMB1		
+_General	Muscle cells	Smooth muscle cells	MYH11		
+_General	Vascular cells	Endothelial cells	FCN3	??, makes sense for lung at least	
+_General	Vascular cells	Endothelial cells	SELE		
+_General	Vascular cells	Endothelial cells	PECAM1		
+_General	Vascular cells	Endothelial cells	CLEC14A		
+_General	Vascular cells	Endothelial cells	CDH5		
+_General	Vascular cells	Endothelial cells	VWF		
+_General	Vascular cells	Endothelial cells	ECSCR		
+_General	Vascular cells	Endothelial cells	ERG		
+_General	Vascular cells	Endothelial cells	FLT4		
+_General	Vascular cells	Endothelial cells	CD34		
+_General	Vascular cells	Endothelial cells	ENG		
+_General	Vascular cells	Endothelial cells	ESAM		
+_General	Vascular cells	Endothelial cells	ROBO4		
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	MYH11	smooth muscle marker	
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	CNN1	smooth muscle marker	
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	NGFR		
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	TP63		
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	CDH5		
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	SERPINB5	epithelial marker	
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	MME	uncertain	
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	KRT5	epithelial marker	
+Breast	Epithelial cells	myoepithelial cells (coexpression of epithelial markers and smooth muscle markers)	KRT14	epithelial marker	
+Breast	Epithelial cells	luminal epithelial cells	SCGB2A2		
+Breast	Epithelial cells	luminal epithelial cells	PIP		
+Breast	Epithelial cells	luminal epithelial cells	KRT7		
+Breast	Epithelial cells	luminal epithelial cells	KRT8		
+Breast	Epithelial cells	luminal epithelial cells	KRT18		
+Breast	Epithelial cells	luminal epithelial cells	KRT19		
+
+_General	Immune cells	Macrophages	CD14		
+
+_General	Immune cells	Macrophages	CD4		
+_General	Immune cells	Dendritic cells	CD4		
+_General	Immune cells	T lymphocytes	CD4	CD4 T cells and T-reg specifically	
+_General	Immune cells	T lymphocytes	CCR4	T-reg	
+_General	Immune cells	T lymphocytes	IL2RA	T-reg	
+_General	Immune cells	Monocytes	FCGR3A	Non-classical and intermediate	
+_General	Immune cells	Dendritic cells	ITGAX	Myeloid	
+_General	Immune cells	Granulocytes	ITGAX	Eosinophils & Neutrophils	
+_General	Immune cells	B lymphocytes	CD27	Memory specifically	
+_General	Immune cells	T lymphocytes	CD28		
+_General	Immune cells	Natural killer cells	NCAM1		
+_General	Immune cells	Basophils	IL3RA		
+_General	Immune cells	Dendritic cells	IL3RA	Plasmacytoid DC specifically	
+_General	Immune cells	Dendritic cells	GZMB	Plasmacytoid DC specifically	
+_General	Immune cells	T lymphocytes	IL7R	T-regs are low	
+_General	Immune cells	T lymphocytes	KLRB1	MAIT are high	
+_General	Immune cells	Basophils	ENPP3		
+_General	Immune cells	Dendritic cells	HLA-DRA		
+_General	Immune cells	Dendritic cells	HLA-DRB1		
+_General	Immune cells	Dendritic cells	HLA-DRB5		
+_General	Immune cells	B lymphocytes	HLA-DRA		
+_General	Immune cells	B lymphocytes	HLA-DRB1		
+_General	Immune cells	B lymphocytes	HLA-DRB5		
+_General	Immune cells	Monocytes	HLA-DRA		
+_General	Immune cells	Monocytes	HLA-DRB1		
+_General	Immune cells	Monocytes	HLA-DRB5		

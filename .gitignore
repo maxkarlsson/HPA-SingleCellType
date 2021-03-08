@@ -1,0 +1,12 @@
+data
+results
+doc
+/data
+/results
+/doc
+data/
+doc/
+results/
+.RData
+.Rhistory
+.Rproj.user

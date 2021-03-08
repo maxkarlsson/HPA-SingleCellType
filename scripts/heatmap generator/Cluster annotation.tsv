@@ -1,0 +1,381 @@
+dataset_id	dataset	cluster_id	cell_type
+1	Axillary lymph nodes	0	Endothelial cells
+1	Axillary lymph nodes	1	Endothelial cells
+1	Axillary lymph nodes	2	Endothelial cells
+1	Axillary lymph nodes	3	Endothelial cells
+1	Axillary lymph nodes	4	Endothelial cells
+1	Axillary lymph nodes	5	Endothelial cells
+1	Axillary lymph nodes	6	Endothelial cells
+1	Axillary lymph nodes	7	Endothelial cells
+1	Axillary lymph nodes	8	Endothelial cells
+1	Axillary lymph nodes	9	Endothelial cells
+1	Axillary lymph nodes	10	Endothelial cells
+1	Axillary lymph nodes	11	Endothelial cells
+1	Axillary lymph nodes	12	B cells
+1	Axillary lymph nodes	13	Endothelial cells
+2	Breast	0	Luminal 2
+2	Breast	1	Basal
+2	Breast	2	Basal
+2	Breast	3	Luminal 2
+2	Breast	4	Luminal 1
+2	Breast	5	Basal
+2	Breast	6	Luminal 1
+2	Breast	7	Basal
+2	Breast	8	Luminal 1
+2	Breast	9	Luminal 2
+2	Breast	10	Luminal 2
+2	Breast	11	Luminal 1
+2	Breast	12	Luminal 2
+2	Breast	13	Luminal 2
+2	Breast	14	Basal
+2	Breast	15	Luminal 2
+2	Breast	16	Luminal 1
+2	Breast	17	Luminal 2
+3	Colon	0	Progenitor cells
+3	Colon	1	stem cells
+3	Colon	2	Progenitor cells
+3	Colon	3	Goblet
+3	Colon	4	Enterocytes
+3	Colon	5	Progenitor cells
+3	Colon	6	Goblet
+3	Colon	7	Transient amplifying cells
+3	Colon	8	Paneth cells
+3	Colon	9	Paneth cells
+3	Colon	10	Paneth cells
+4	Colon 2	0	Goblet
+4	Colon 2	1	Progenitor cells
+4	Colon 2	2	Progenitor cells
+4	Colon 2	3	Paneth cells
+4	Colon 2	4	T cells
+4	Colon 2	5	Enterocytes
+4	Colon 2	6	Enterocytes
+4	Colon 2	7	Enterocytes
+4	Colon 2	8	Paneth cells
+4	Colon 2	9	Enterocytes
+4	Colon 2	10	Enterocytes
+4	Colon 2	11	Paneth cells
+4	Colon 2	12	B cells
+4	Colon 2	13	T cells
+4	Colon 2	14	Epithelial cells
+4	Colon 2	15	NA
+5	Eyes	0	Rods
+5	Eyes	1	Rods
+5	Eyes	2	Muller
+5	Eyes	3	Horizontal
+5	Eyes	4	Bipolar
+5	Eyes	5	Muller
+5	Eyes	6	Muller
+5	Eyes	7	Bipolar
+5	Eyes	8	Retinal ganglion cells
+5	Eyes	9	Cones
+5	Eyes	10	Horizontal
+5	Eyes	11	Muller
+6	Eyes macula	0	T cells
+6	Eyes macula	1	Retinal pigment Epithelial cells
+6	Eyes macula	2	Retinal pigment Epithelial cells
+6	Eyes macula	3	Retinal pigment Epithelial cells
+6	Eyes macula	4	Retinal pigment Epithelial cells
+6	Eyes macula	5	Retinal pigment Epithelial cells
+6	Eyes macula	6	Retinal pigment Epithelial cells
+6	Eyes macula	7	Muller
+6	Eyes macula	8	Monocytes
+6	Eyes macula	9	Bipolar
+6	Eyes macula	10	Myeloid
+6	Eyes macula	11	Retinal pigment Epithelial cells
+6	Eyes macula	12	Myeloid
+7	Eyes peripheral	0	Amacrine
+7	Eyes peripheral	1	Muller
+7	Eyes peripheral	2	Muller
+7	Eyes peripheral	3	Retinal pigment Epithelial cells
+7	Eyes peripheral	4	T cells
+7	Eyes peripheral	5	Muller
+7	Eyes peripheral	6	Retinal pigment Epithelial cells
+7	Eyes peripheral	7	Muller
+7	Eyes peripheral	8	Muller
+7	Eyes peripheral	9	Muller
+7	Eyes peripheral	10	Muller
+7	Eyes peripheral	11	Muller
+8	Head and neck lymph nodes	0	Endothelial cells
+8	Head and neck lymph nodes	1	Endothelial cells
+8	Head and neck lymph nodes	2	Endothelial cells
+8	Head and neck lymph nodes	3	Endothelial cells
+8	Head and neck lymph nodes	4	Endothelial cells
+8	Head and neck lymph nodes	5	Endothelial cells
+8	Head and neck lymph nodes	6	Endothelial cells
+8	Head and neck lymph nodes	7	Endothelial cells
+8	Head and neck lymph nodes	8	Endothelial cells
+8	Head and neck lymph nodes	9	Endothelial cells
+8	Head and neck lymph nodes	10	Endothelial cells
+8	Head and neck lymph nodes	11	Endothelial cells
+9	Heart	0	Ventricular Cardiomyocyte
+9	Heart	1	Ventricular Cardiomyocyte
+9	Heart	2	Ventricular Cardiomyocyte
+9	Heart	3	Endothelial cells
+9	Heart	4	Macrophages
+9	Heart	5	Endothelial cells
+9	Heart	6	Smooth muscle cells
+9	Heart	7	Fibroblastss
+9	Heart	8	Fibroblastss
+9	Heart	9	Atrial Cardiomyocyte
+10	Ileum	0	Epithelial cells
+10	Ileum	1	Epithelial cells
+10	Ileum	2	Epithelial cells
+10	Ileum	3	Epithelial cells
+10	Ileum	4	Epithelial cells
+10	Ileum	5	Epithelial cells
+10	Ileum	6	Epithelial cells
+10	Ileum	7	Epithelial cells
+10	Ileum	8	Epithelial cells
+10	Ileum	9	Epithelial cells
+10	Ileum	10	Epithelial cells
+10	Ileum	11	Epithelial cells
+11	Kidney	0	Proximal tubule
+11	Kidney	1	Vascular
+11	Kidney	2	Proximal tubule
+11	Kidney	3	Proximal tubule
+11	Kidney	4	Glomerular parietal Epithelial cells
+11	Kidney	5	Proximal tubule
+11	Kidney	6	Proximal tubule
+11	Kidney	7	T cells
+11	Kidney	8	Monocytes
+11	Kidney	9	Glomerular parietal Epithelial cells
+11	Kidney	10	Glomerular parietal Epithelial cells
+11	Kidney	11	B cells
+12	Liver	0	T cells
+12	Liver	1	Hepatocytes
+12	Liver	2	Monocytes
+12	Liver	3	Endothelial cells
+12	Liver	4	Hepatocytes
+12	Liver	5	Hepatocytes
+12	Liver	6	Hepatocytes
+12	Liver	7	B cells
+12	Liver	8	NK cells
+12	Liver	9	Hepatocytes
+12	Liver	10	Monocytes
+12	Liver	11	NK cells
+12	Liver	12	Hepatocytes
+12	Liver	13	Endothelial cells
+12	Liver	14	T cells
+12	Liver	15	Epithelial cells
+12	Liver	16	NK cells
+12	Liver	17	?
+13	Liver hep- CD45-	0	Stellate cells
+13	Liver hep- CD45-	1	T cells
+13	Liver hep- CD45-	2	Macrophages
+13	Liver hep- CD45-	3	T cells
+13	Liver hep- CD45-	4	Dendritic cells
+13	Liver hep- CD45-	5	Hepatocytes
+13	Liver hep- CD45-	6	Endothelial cells
+13	Liver hep- CD45-	7	NK cells
+13	Liver hep- CD45-	8	NK cells
+13	Liver hep- CD45-	9	Endothelial cells
+13	Liver hep- CD45-	10	Endothelial cells
+13	Liver hep- CD45-	11	Hepatocytes
+13	Liver hep- CD45-	12	B cells
+13	Liver hep- CD45-	13	Endothelial cells
+13	Liver hep- CD45-	14	B cells
+13	Liver hep- CD45-	15	Stellate cells
+14	Liver hep- CD45+	0	NK cells
+14	Liver hep- CD45+	1	T cells
+14	Liver hep- CD45+	2	T cells
+14	Liver hep- CD45+	3	Monocytes
+14	Liver hep- CD45+	4	T cells
+14	Liver hep- CD45+	5	NK cells
+14	Liver hep- CD45+	6	Monocytes
+14	Liver hep- CD45+	7	T cells
+14	Liver hep- CD45+	8	Monocytes
+14	Liver hep- CD45+	9	B cells
+14	Liver hep- CD45+	10	T cells
+14	Liver hep- CD45+	11	Endothelial cells
+14	Liver hep- CD45+	12	T cells
+14	Liver hep- CD45+	13	Dendritic cells
+14	Liver hep- CD45+	14	B cells
+15	Lung	0	Monocytes
+15	Lung	1	Epithelial cells
+15	Lung	2	Monocytes
+15	Lung	3	T cells
+15	Lung	4	Granulocytes
+15	Lung	5	Fibroblastss
+15	Lung	6	Granulocytes
+15	Lung	7	Epithelial cells
+15	Lung	8	Epithelial cells
+15	Lung	9	Fibroblastss
+15	Lung	10	Epithelial cells
+16	Muscle	0	Endothelial cells
+16	Muscle	1	Myofibroblasts
+16	Muscle	2	Fibroblastss
+16	Muscle	3	T cells
+16	Muscle	4	Smooth muscle cells
+16	Muscle	5	Endothelial cells
+16	Muscle	6	Fibroblastss
+16	Muscle	7	Smooth muscle cells
+17	NK cells blood	0	NK cells
+17	NK cells blood	1	NK cells
+17	NK cells blood	2	NK cells
+17	NK cells blood	3	NK cells
+17	NK cells blood	4	NK cells
+17	NK cells blood	5	NK cells
+18	NK cells bone marrow	0	NK cells
+18	NK cells bone marrow	1	NK cells
+18	NK cells bone marrow	2	NK cells
+18	NK cells bone marrow	3	NK cells
+18	NK cells bone marrow	4	NK cells
+18	NK cells bone marrow	5	NK cells
+18	NK cells bone marrow	6	NK cells
+18	NK cells bone marrow	7	NK cells
+18	NK cells bone marrow	8	Dendritic cells
+19	PBMCs	0	Monocytes
+19	PBMCs	1	T cells
+19	PBMCs	2	T cells
+19	PBMCs	3	T cells
+19	PBMCs	4	T cells
+19	PBMCs	5	T cells
+19	PBMCs	6	T cells
+19	PBMCs	7	Monocytes
+19	PBMCs	8	B cells
+19	PBMCs	9	Monocytes
+19	PBMCs	10	Dendritic cells
+19	PBMCs	11	NA
+20	Placenta	0	Villous cytotrophoblast
+20	Placenta	1	Fibroblastss
+20	Placenta	2	Villous cytotrophoblast
+20	Placenta	3	Extravillous trophoblasts
+20	Placenta	4	Villous cytotrophoblast
+20	Placenta	5	Hofbauer cells
+20	Placenta	6	Extravillous trophoblasts
+20	Placenta	7	Macrophages
+20	Placenta	8	Villous cytotrophoblast
+20	Placenta	9	Extravillous trophoblasts
+20	Placenta	10	Syncytiotrophoblast
+20	Placenta	11	Epithelial cells
+20	Placenta	12	Villous cytotrophoblast
+20	Placenta	13	Villous cytotrophoblast
+20	Placenta	14	Villous cytotrophoblast
+20	Placenta	15	Villous cytotrophoblast
+20	Placenta	16	Villous cytotrophoblast
+20	Placenta	17	Fibroblastss
+20	Placenta	18	Monocytes
+20	Placenta	19	Endothelial cells
+20	Placenta	20	Epithelial cells
+21	Placenta blood	0	T cells
+21	Placenta blood	1	T cells
+21	Placenta blood	2	T cells
+21	Placenta blood	3	T cells
+21	Placenta blood	4	T cells
+21	Placenta blood	5	Monocytes
+21	Placenta blood	6	T cells
+21	Placenta blood	7	Monocytes
+21	Placenta blood	8	T cells
+21	Placenta blood	9	T cells
+21	Placenta blood	10	Dendritic cells
+21	Placenta blood	11	Monocytes
+22	Prostate	0	Basal epithelia
+22	Prostate	1	Epithelial cells
+22	Prostate	2	Epithelial cells
+22	Prostate	3	Fibroblastss
+22	Prostate	4	Basal epithelia
+22	Prostate	5	Endothelial cells
+22	Prostate	6	Smooth muscle cells
+22	Prostate	7	Epithelial cells
+22	Prostate	8	Epithelial cells
+22	Prostate	9	Smooth muscle cells
+22	Prostate	10	Smooth muscle cells
+22	Prostate	11	Fibroblastss
+22	Prostate	12	Epithelial cells
+22	Prostate	13	Endothelial cells
+22	Prostate	14	Endothelial cells
+22	Prostate	15	Epithelial cells
+23	Prostate 2	0	Epithelial cells
+23	Prostate 2	1	Fibroblastss
+23	Prostate 2	2	Epithelial cells
+23	Prostate 2	3	Fibroblastss
+23	Prostate 2	4	Epithelial cells
+23	Prostate 2	5	Fibroblastss
+23	Prostate 2	6	Epithelial cells
+23	Prostate 2	7	Epithelial cells
+23	Prostate 2	8	Epithelial cells
+23	Prostate 2	9	Smooth muscle cells
+23	Prostate 2	10	Epithelial cells
+23	Prostate 2	11	Endothelial cells
+23	Prostate 2	12	T cells
+24	Prostate 3	0	Basal
+24	Prostate 3	1	Basal
+24	Prostate 3	2	Fibroblastss
+24	Prostate 3	3	Epithelial cells
+24	Prostate 3	4	Smooth muscle cells
+24	Prostate 3	5	Fibroblastss
+24	Prostate 3	6	Fibroblastss
+24	Prostate 3	7	Epithelial cells
+24	Prostate 3	8	Epithelial cells
+24	Prostate 3	9	Endothelial cells
+24	Prostate 3	10	Epithelial cells
+24	Prostate 3	11	Smooth muscle cells
+24	Prostate 3	12	Smooth muscle cells
+24	Prostate 3	13	Epithelial cells
+24	Prostate 3	14	Epithelial cells
+24	Prostate 3	15	Monocytes
+24	Prostate 3	16	T cells
+25	Rectum	0	Epithelial cells
+25	Rectum	1	Goblet
+25	Rectum	2	Epithelial cells
+25	Rectum	3	Epithelial cells
+25	Rectum	4	Progenitor cells
+25	Rectum	5	Enterocytes
+25	Rectum	6	Progenitor cells
+25	Rectum	7	Progenitor cells
+25	Rectum	8	Epithelial cells
+25	Rectum	9	Epithelial cells
+25	Rectum	10	Goblet
+25	Rectum	11	Epithelial cells
+26	Testis	0	Spermatogonia
+26	Testis	1	Spermatogonia
+26	Testis	2	Spermatogonia
+26	Testis	3	Spermatocytes
+26	Testis	4	Spermatocytes
+26	Testis	5	Leydig and myoid-like cells
+26	Testis	6	Leydig and myoid-like cells
+26	Testis	7	Spermatocytes
+26	Testis	8	Spermatogonia
+26	Testis	9	Spermatogonia
+26	Testis	10	Spermatogonia
+26	Testis	11	Spermatocytes
+26	Testis	12	Spermatocytes
+26	Testis	13	Sertoli cells
+26	Testis	14	Spermatocytes
+26	Testis	15	Monocytes
+26	Testis	16	Endothelial cells
+26	Testis	17	Spermatogonia
+26	Testis	18	Epithelial cells
+26	Testis	19	Sertoli cells
+26	Testis	20	Spermatogonia
+27	Testis 2	0	Epithelial cells
+27	Testis 2	1	Spermatogonia
+27	Testis 2	2	Spermatogonia
+27	Testis 2	3	Spermatocytes
+27	Testis 2	4	Endothelial cells
+27	Testis 2	5	Spermatogonia
+27	Testis 2	6	Spermatocytes
+27	Testis 2	7	Sertoli cells
+27	Testis 2	8	Leydig and myoid-like cells
+27	Testis 2	9	Macrophages
+27	Testis 2	10	Spermatogonia
+27	Testis 2	11	Sertoli cells
+27	Testis 2	12	Spermatogonia
+27	Testis 2	13	Spermatocytes
+27	Testis 2	14	Spermatogonia
+27	Testis 2	15	Spermatocytes
+27	Testis 2	16	Spermatogonia
+28	Testis 3	0	Myofibroblasts
+28	Testis 3	1	Spermatogonia
+28	Testis 3	2	Myofibroblasts
+28	Testis 3	3	Endothelial cells
+28	Testis 3	4	Monocytes
+28	Testis 3	5	Spermatogonia
+28	Testis 3	6	Spermatogonia
+28	Testis 3	7	Spermatocytes
+28	Testis 3	8	Myofibroblasts
+28	Testis 3	9	Sertoli cells
+28	Testis 3	10	Myofibroblasts
+28	Testis 3	11	Smooth muscle cells
+28	Testis 3	12	Endothelial cells
+28	Testis 3	13	T cells
