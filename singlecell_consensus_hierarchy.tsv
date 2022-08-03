@@ -1,0 +1,76 @@
+subcell_type_name	cell_type_name	group_name
+Enterocytes	Enterocytes	Epithelial cells
+Mucus-secreting cells	Mucus-secreting cells	Epithelial cells
+Undifferentiated cells	Undifferentiated cells	Undifferentiated cells
+T-cells	T-cells	Blood & immune cells
+Paneth cells	Paneth cells	Epithelial cells
+B-cells	B-cells	Blood & immune cells
+Intestinal endocrine cells	Intestinal endocrine cells	Endocrine cells
+Granulocytes	Granulocytes	Blood & immune cells
+Rod photoreceptor cells	Rod photoreceptor cells	Neuronal cells
+Muller glia cells	Muller glia cells	Glial cells
+Bipolar cells	Bipolar cells	Neuronal cells
+Cone photoreceptor cells	Cone photoreceptor cells	Neuronal cells
+Horizontal cells	Horizontal cells	Neuronal cells
+Endothelial cells	Endothelial cells	Vascular cells
+Cardiomyocytes	Cardiomyocytes	Muscle cells
+Mixed immune cells	Mixed immune cells	Blood & immune cells
+Smooth muscle cells	Smooth muscle cells	Muscle cells
+Fibroblasts	Fibroblasts	Mesenchymal cells
+Proximal tubular cells	Proximal tubular cells	Epithelial cells
+Macrophages	Macrophages	Blood & immune cells
+Distal tubular cells	Distal tubular cells	Epithelial cells
+Collecting duct cells	Collecting duct cells	Epithelial cells
+Hepatocytes	Hepatocytes	Epithelial cells
+Kupffer cells	Kupffer cells	Blood & immune cells
+Ito cells	Ito cells	Mesenchymal cells
+Cholangiocytes	Cholangiocytes	Epithelial cells
+Erythroid cells	Erythroid cells	Blood & immune cells
+Alveolar cells type 2	Alveolar cells type 2	Epithelial cells
+Club cells	Club cells	Epithelial cells
+Ciliated cells	Ciliated cells	Epithelial cells
+Alveolar cells type 1	Alveolar cells type 1	Epithelial cells
+Cytotrophoblasts	Cytotrophoblasts	Trophoblast cells
+Extravillous trophoblasts	Extravillous trophoblasts	Trophoblast cells
+Hofbauer cells	Hofbauer cells	Blood & immune cells
+Syncytiotrophoblasts	Syncytiotrophoblasts	Trophoblast cells
+Basal glandular cells	Basal glandular cells	Epithelial cells
+Glandular cells	Glandular cells	Epithelial cells
+Urothelial cells	Urothelial cells	Epithelial cells
+Monocytes	Monocytes	Blood & immune cells
+NK-cells	NK-cells	Blood & immune cells
+Dendritic cells	Dendritic cells	Blood & immune cells
+Leydig cells	Leydig cells	Endocrine cells
+Late spermatids	Late spermatids	Germ cells
+Spermatogonia	Spermatogonia	Germ cells
+Early spermatids	Early spermatids	Germ cells
+Spermatocytes	Spermatocytes	Germ cells
+Peritubular cells	Peritubular cells	Mesenchymal cells
+Sertoli cells	Sertoli cells	Epithelial cells
+Ductal cells	Ductal cells	Epithelial cells
+Pancreatic endocrine cells	Pancreatic endocrine cells	Endocrine cells
+Mixed cell types	Mixed cell types	Mixed cell types
+Exocrine glandular cells	Exocrine glandular cells	Epithelial cells
+Neutrophils	Neutrophils	Blood & immune cells
+Basal keratinocytes	Basal keratinocytes	Epithelial cells
+Suprabasal keratinocytes	Suprabasal keratinocytes	Epithelial cells
+Melanocytes	Melanocytes	Pigment cells
+Astrocytes	Astrocytes	Glial cells
+Basal respiratory cells	Basal respiratory cells	Epithelial cells
+Adipocytes	Adipocytes	Adipocyte cells
+Ionocytes	Ionocytes	Epithelial cells
+Granulosa cells	Granulosa cells	Epithelial cells
+Mammary Glandular Cells	Mammary Glandular Cells	Epithelial cells
+Myoepithelial cells	Myoepithelial cells	Epithelial cells
+Glandular cells - Endometrium	Glandular cells - Endometrium	Epithelial cells
+Oligodendrocyte precursor cells	Oligodendrocyte precursor cells	Glial cells
+Inhibitory neurons	Inhibitory neurons	Neuronal cells
+Microglial cells	Microglial cells	Glial cells
+Oligodendrocytes	Oligodendrocytes	Glial cells
+Excitatory neurons	Excitatory neurons	Neuronal cells
+Myocytes	Myocytes	Muscle cells
+Peptic cell	Peptic cell	Epithelial cells
+Mucous cell of stomach	Mucous cell of stomach	Epithelial cells
+Plasma cell	Plasma cell	Blood & immune cells
+Theca cells	Theca cells	Endocrine cells
+Squamous epithelial cells	Squamous epithelial cells	Epithelial cells
